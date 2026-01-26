@@ -225,6 +225,31 @@ class Seishiro:
             {'$set': {'verify_status_2': status}},
             upsert=True
         )
+
+    async def get_verify_tutorial_1(self):
+        settings = await self.get_verification_settings()
+        return settings.get("verify_tutorial_1", "not set")
+    
+    async def get_verify_tutorial_2(self):
+        settings = await self.get_verification_settings()
+        return settings.get("verify_tutorial_2", "not set")
+
+    async def get_verify_gap_hours(self):
+        settings = await self.get_verification_settings()
+        return int(settings.get("verify_gap_hours", 0))
+
+    async def set_verify_gap_hours(self, hours: int):
+        await self.verification_settings.update_one(
+            {"_id": "global_settings"},
+            {"$set": {"verify_gap_hours": int(hours)}},
+            upsert=True
+        )
+
+    async def get_shortener_2_available_time(self, user_id):
+        user = await self.col.find_one({"_id": user_id})
+        if not user:
+            return None
+        return user.get("verification", {}).get("shortener_2_available_at")
   # ----------------------------------------
 # 𝐌𝐀𝐃𝐄 𝐁𝐘 𝐀𝐁𝐇𝐈
 # 𝐓𝐆 𝐈𝐃 : @𝐂𝐋𝐔𝐓𝐂𝐇𝟎𝟎𝟖
@@ -238,15 +263,18 @@ class Seishiro:
                 'verify_token_1': "not set",
                 'verify_status_1': False,
                 'api_link_1': "not set",
+                'verify_tutorial_1': "not set",
                 'verify_token_2': "not set",
                 'verify_status_2': False,
-                'api_link_2': "not set"
+                'api_link_2': "not set",
+                'verify_tutorial_2': "not set",
+                'verify_gap_hours': 0
             }
             await self.verification_settings.insert_one(default_settings)
             settings = default_settings
         return settings
 
-    async def update_verification_settings(self, verify_token_1=None, api_link_1=None, verify_token_2=None, api_link_2=None):
+    async def update_verification_settings(self, verify_token_1=None, api_link_1=None, verify_tutorial_1=None, verify_token_2=None, api_link_2=None, verify_tutorial_2=None):
         settings_to_update = {}
         if verify_token_1 is not None:
             settings_to_update['verify_token_1'] = verify_token_1
@@ -256,6 +284,11 @@ class Seishiro:
             settings_to_update['verify_token_2'] = verify_token_2
         if api_link_2 is not None:
             settings_to_update['api_link_2'] = api_link_2
+        if verify_tutorial_1 is not None:
+            settings_to_update['verify_tutorial_1'] = verify_tutorial_1
+
+if verify_tutorial_2 is not None:
+    settings_to_update['verify_tutorial_2'] = verify_tutorial_2
 
         if settings_to_update:
             await self.verification_settings.update_one(

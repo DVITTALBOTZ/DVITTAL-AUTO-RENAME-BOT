@@ -107,9 +107,10 @@ def check_verification(func):
     async def wrapper(client, message, *args, **kwargs):
         user_id = message.from_user.id
         logger.debug(f"check_verification decorator called for user {user_id}")
-        
+
         try:
-            text = message.text
+            # 1️⃣ Handle deep-link verification callback
+            text = message.text or ""
             if len(text) > 7:
                 try:
                     param = text.split(" ", 1)[1]
@@ -117,94 +118,36 @@ def check_verification(func):
                         token = param[7:]
                         await handle_verification_callback(client, message, token)
                         return
-                        
                 except Exception as e:
                     logger.error(f"Error processing start parameter: {e}")
-    
-            # Step 1: Check if user has premium access - premium users bypass verification
+
+            # 2️⃣ Premium users bypass verification
             try:
                 if await check_user_premium(user_id):
-                    logger.debug(f"User {user_id} has premium, bypassing verification")
                     return await func(client, message, *args, **kwargs)
             except Exception as e:
-                logger.error(f"Error checking premium status in decorator: {e}")
-                # Continue with verification check even if premium check fails
-            
-            # Step 2: Get verification settings to check if verification is enabled
+                logger.error(f"Premium check failed: {e}")
+
+            # 3️⃣ Check if verification system is enabled
             settings = await rexbots.get_verification_settings()
-            verify_status_1 = settings.get("verify_status_1", False)
-            verify_status_2 = settings.get("verify_status_2", False)
-            
-            # If both verification systems are disabled, allow access
-            if not verify_status_1 and not verify_status_2:
-                logger.debug(f"Verification disabled, allowing user {user_id}")
+            if not settings.get("verify_status_1") and not settings.get("verify_status_2"):
                 return await func(client, message, *args, **kwargs)
-            
-            # Step 3: Check if user is already verified (EXACTLY like /verify command)
-            try:
-                if await is_user_verified(user_id):
-                    try:
-                        user_data = await rexbots.col.find_one({"_id": user_id}) or {}
-                        verification_data = user_data.get("verification", {})
-                        
-                        verified_time_1 = verification_data.get("verified_time_1")
-                        verified_time_2 = verification_data.get("verified_time_2")
-                        
-                        current_time = datetime.utcnow()
-                        
-                        # Check if fully verified (shortener 1 within 24 hours)
-                        if verified_time_1:
-                            try:
-                                if isinstance(verified_time_1, datetime) and current_time < verified_time_1 + timedelta(hours=24):
-                                    time_left = timedelta(hours=24) - (current_time - verified_time_1)
-                                    hours_left = time_left.seconds // 3600
-                                    minutes_left = (time_left.seconds % 3600) // 60
-                                    
-                                    await show_start_message(client, message)
-                                    return 
-                            except Exception as e:
-                                logger.error(f"Error checking verified_time_1: {e}")
 
-                        # Check if fully verified (shortener 2 within 24 hours)
-                        if verified_time_2:
-                            try:
-                                if isinstance(verified_time_2, datetime) and current_time < verified_time_2 + timedelta(hours=24):
-                                    time_left = timedelta(hours=24) - (current_time - verified_time_2)
-                                    hours_left = time_left.seconds // 3600
-                                    minutes_left = (time_left.seconds % 3600) // 60
-                                    
-                                    await show_start_message(client, message)
-                                    return 
-                            except Exception as e:
-                                logger.error(f"Error checking verified_time_2: {e}")
-                                
-                    except Exception as e:
-                        logger.error(f"Error checking verification status: {e}")
-            except Exception as e:
-                logger.error(f"Error in is_user_verified check: {e}")
+            # 4️⃣ Check verification status (FINAL AUTHORITY)
+            if await is_user_verified(user_id):
+                return await func(client, message, *args, **kwargs)
 
-            
-            # Step 4: User is NOT verified - send verification message
-            logger.debug(f"User {user_id} is not verified, sending verification prompt")
-
-            try:
-                await send_verification_message(client, message)
-            except Exception as e:
-                logger.error(f"Error sending verification message in decorator: {e}")
-                await message.reply_text(
-                    f"<b><i>! Eʀʀᴏʀ, Cᴏɴᴛᴀᴄᴛ ᴅᴇᴠᴇʟᴏᴘᴇʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜᴇ ɪssᴜᴇs @seishiro_obito</i></b>\n"
-                    f"<blockquote expandable><b>Rᴇᴀsᴏɴ:</b> {str(e)}</blockquote>"
-                )
+            # 5️⃣ User NOT verified → send verification message
+            await send_verification_message(client, message)
             return
-            
+
         except Exception as e:
-            logger.error(f"FATAL ERROR in check_verification decorator: {e}")
+            logger.error(f"FATAL ERROR in check_verification decorator: {e}", exc_info=True)
             await message.reply_text(
-                f"<b><i>! Eʀʀᴏʀ, Cᴏɴᴛᴀᴄᴛ ᴅᴇᴠᴇʟᴏᴘᴇʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜᴇ ɪssᴜᴇs @seishiro_obito</i></b>\n"
+                f"<b><i>! Eʀʀᴏʀ, Cᴏɴᴛᴀᴄᴛ ᴅᴇᴠᴇʟᴏᴘᴇʀ</i></b>\n"
                 f"<blockquote expandable><b>Rᴇᴀsᴏɴ:</b> {str(e)}</blockquote>"
             )
-            return
-    
+
     return wrapper
 # ----------------------------------------
 # 𝐌𝐀𝐃𝐄 𝐁𝐘 𝐀𝐁𝐇𝐈
@@ -581,17 +524,26 @@ async def handle_verification_callback(client, message: Message, token: str):
         # All checks passed - Update verification time (24 hour validity)
         logger.info(f"[VERIFY] All checks passed! Updating database...")
         
+        update_fields = {}
+        unset_fields = {
+            "verification.pending_token": "",
+            "verification.token_created_at": "",
+            "verification.token_user_id": ""
+        }
+
+        if selected_shortener == 1:
+            gap_hours = settings.get("verify_gap_hours", 0)  # default 0 if not set
+            update_fields["verification.verified_time_1"] = current_time
+            update_fields["verification.shortener_2_available_at"] = current_time + timedelta(hours=gap_hours)
+
+        elif selected_shortener == 2:
+        update_fields["verification.verified_time_2"] = current_time
         update_result = await rexbots.col.update_one(
             {"_id": user_id},
-            {"$set": {
-                "verification.verified_time_1": current_time,
-                "verification.verified_time_2": current_time
+            {
+                "$set": update_fields,
+                "$unset": unset_fields
             },
-             "$unset": {
-                "verification.pending_token": "",
-                "verification.token_created_at": "",
-                "verification.token_user_id": ""
-             }},
             upsert=True
         )
         
@@ -651,20 +603,25 @@ async def send_verification_message(client, message: Message):
     verify_status_2 = settings.get("verify_status_2", False)
     verified_time_1 = settings.get("verified_time_1")
     verified_time_2 = settings.get("verified_time_2")
-    
-    # Get available shorteners
-    available_shorteners = []
+    tutorial_1 = settings.get("verify_tutorial_1", "not set")
+    tutorial_2 = settings.get("verify_tutorial_2", "not set")
+    user_data = await rexbots.col.find_one({"_id": user_id}) or {}
+    verification = user_data.get("verification", {})
+    verified_time_1 = verification.get("verified_time_1")
+    verified_time_2 = verification.get("verified_time_2")
+    shortener_2_available_at = verification.get("shortener_2_available_at")
+    current_time = datetime.utcnow()
+    selected_shortener = None
     if verify_status_1:
-        available_shorteners.append(1)
-    if verify_status_2:
-        available_shorteners.append(2)
-    
-    if not available_shorteners:
-        await show_start_message(client, message)
-        return 
-    
-    # Randomly select a shortener from available ones
-    selected_shortener = random.choice(available_shorteners)
+        if not verified_time_1 or current_time > verified_time_1 + timedelta(hours=24):
+            selected_shortener = 1
+    if verify_status_2 and verified_time_1:
+        if shortener_2_available_at and current_time >= shortener_2_available_at:
+            if not verified_time_2 or current_time > verified_time_2 + timedelta(hours=24):
+                selected_shortener = 2
+    if not selected_shortener:
+        await message.reply_text("✅ Yᴏᴜ ᴀʀᴇ ᴀʟʀᴇᴀᴅʏ ᴠᴇʀɪғɪᴇᴅ!\n\n⏰ Vᴇʀɪғɪᴄᴀᴛɪᴏɴ ɪs sᴛɪʟʟ ᴠᴀʟɪᴅ.")
+        return
     
     # Generate a random token for verification
     token = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
@@ -695,9 +652,23 @@ async def send_verification_message(client, message: Message):
         return None
     
     # Send button with shortlink (e.g., https://lksfy.com/eARog)
-    buttons = InlineKeyboardMarkup([[
-        InlineKeyboardButton("• Vᴇʀɪғʏ •", url=shortlink)
-    ]])
+    buttons_list = []
+
+    # Verify 1 buttons
+    if selected_shortener == 1:
+        row = [InlineKeyboardButton("🔐 Vᴇʀɪꜰʏ 𝟷", url=shortlink)]
+        if tutorial_1 != "not set":
+            row.append(InlineKeyboardButton("📘 Tᴜᴛᴏʀɪᴀʟ 𝟷", url=tutorial_1))
+        buttons_list.append(row)
+
+    # Verify 2 buttons
+    elif selected_shortener == 2:
+        row = [InlineKeyboardButton("🔐 Vᴇʀɪꜰʏ 𝟸", url=shortlink)]
+        if tutorial_2 != "not set":
+            row.append(InlineKeyboardButton("📘 Tᴜᴛᴏʀɪᴀʟ 𝟸", url=tutorial_2))
+        buttons_list.append(row)
+    
+    buttons = InlineKeyboardMarkup(buttons_list)
     
     await message.reply_text(
         f"ʜᴇʏ {message.from_user.mention},\n\n"
@@ -786,30 +757,43 @@ async def get_shortlink(link, shortener_num):
 # 𝐀𝐍𝐘 𝐈𝐒𝐒𝐔𝐄𝐒 𝐎𝐑 𝐀𝐃𝐃𝐈𝐍𝐆 𝐌𝐎𝐑𝐄 𝐓𝐇𝐈𝐍𝐆𝐬 𝐂𝐀𝐍 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐌𝐄
 # ----------------------------------------
 async def is_user_verified(user_id):
-    """Check if user is verified (either verified_time_1 or verified_time_2 is valid)"""
+    """Check if user is verified (either shortener 1 or 2 is valid for 24h)"""
     try:
         user_data = await rexbots.col.find_one({"_id": user_id})
         if not user_data:
             return False
         
-        verification_data = user_data.get("verification", {})
-        verified_time_1 = verification_data.get("verified_time_1")
-        verified_time_2 = verification_data.get("verified_time_2")
+        verification = user_data.get("verification", {})
+        verified_time_1 = verification.get("verified_time_1")
+        verified_time_2 = verification.get("verified_time_2")
         
         current_time = datetime.utcnow()
-        
-        # Check if either verification is valid (within 24 hours)
-        if verified_time_1:
-            if isinstance(verified_time_1, datetime):
-                if current_time < verified_time_1 + timedelta(hours=24):
-                    return True
-        
-        if verified_time_2:
-            if isinstance(verified_time_2, datetime):
-                if current_time < verified_time_2 + timedelta(hours=24):
-                    return True
-        
-        return False
+        valid = False
+        unset_fields = {}
+
+        # ---- Shortener 1 ----
+        if isinstance(verified_time_1, datetime):
+            if current_time < verified_time_1 + timedelta(hours=24):
+                valid = True
+            else:
+                unset_fields["verification.verified_time_1"] = ""
+
+        # ---- Shortener 2 ----
+        if isinstance(verified_time_2, datetime):
+            if current_time < verified_time_2 + timedelta(hours=24):
+                valid = True
+            else:
+                unset_fields["verification.verified_time_2"] = ""
+
+        # Cleanup expired entries
+        if unset_fields:
+            await rexbots.col.update_one(
+                {"_id": user_id},
+                {"$unset": unset_fields}
+            )
+
+        return valid
+
     except Exception as e:
         logger.error(f"Error checking if user is verified: {e}")
         return False
@@ -822,92 +806,77 @@ async def is_user_verified(user_id):
 async def verify_command(client, message: Message):
     """Check verification status or initiate verification"""
     user_id = message.from_user.id
-    
+
+    # ── 1️⃣ Premium users bypass ─────────────────────────────
     try:
-        # Check if user has premium
         if await check_user_premium(user_id):
             await message.reply_text(
                 "✨ <b>Yᴏᴜ ʜᴀᴠᴇ Pʀᴇᴍɪᴜᴍ Aᴄᴄᴇss!</b>\n\n"
                 "Pʀᴇᴍɪᴜᴍ ᴜsᴇʀs ᴅᴏɴ'ᴛ ɴᴇᴇᴅ ᴛᴏ ᴠᴇʀɪғʏ.",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("•Sᴇᴇ ᴘʟᴀɴs •", callback_data="seeplan")
+                    InlineKeyboardButton("• Sᴇᴇ ᴘʟᴀɴs •", callback_data="seeplan")
                 ]])
             )
             return
     except Exception as e:
-        logger.error(f"Error checking premium status in verify command: {e}")
-        # Continue with verification check even if premium check fails
+        logger.error(f"Premium check failed in /verify: {e}")
 
-    try:
-        # Check if user is already verified
-        if await is_user_verified(user_id):
-            try:
-                user_data = await rexbots.col.find_one({"_id": user_id}) or {}
-                verification_data = user_data.get("verification", {})
-                
-                # Get verification settings
-                settings = await rexbots.get_verification_settings()
-                verified_time_1 = verification_data.get("verified_time_1")
-                verified_time_2 = verification_data.get("verified_time_2")
-                
-                current_time = datetime.utcnow()
-                
-                # Check if fully verified (shortener 1 within 24 hours)
-                if verified_time_1:
-                    try:
-                        if isinstance(verified_time_1, datetime) and current_time < verified_time_1 + timedelta(hours=24):
-                            time_left = timedelta(hours=24) - (current_time - verified_time_1)
-                            hours_left = time_left.seconds // 3600
-                            minutes_left = (time_left.seconds % 3600) // 60
-                            
-                            await message.reply_text(
-                                f"✅ Yᴏᴜ ᴀʀᴇ ᴀʟʀᴇᴀᴅʏ ᴠᴇʀɪғɪᴇᴅ!\n\n"
-                                f"⏰ Tɪᴍᴇ ʟᴇғᴛ: {hours_left}ʜ {minutes_left}ᴍ",
-                                reply_markup=InlineKeyboardMarkup([[
-                                    InlineKeyboardButton("•Sᴇᴇ ᴘʟᴀɴs •", callback_data="seeplan")
-                                ]])
-                            )
-                            return
-                    except Exception as e:
-                        logger.error(f"Error checking verified_time_1: {e}")
+    # ── 2️⃣ Load user verification data ─────────────────────
+    user_data = await rexbots.col.find_one({"_id": user_id}) or {}
+    verification = user_data.get("verification", {})
 
-                # Check if fully verified (shortener 2 within 24 hours)
-                if verified_time_2:
-                    try:
-                        if isinstance(verified_time_2, datetime) and current_time < verified_time_2 + timedelta(hours=24):
-                            time_left = timedelta(hours=24) - (current_time - verified_time_2)
-                            hours_left = time_left.seconds // 3600
-                            minutes_left = (time_left.seconds % 3600) // 60
-                            
-                            await message.reply_text(
-                                f"✅ Yᴏᴜ ᴀʀᴇ ᴀʟʀᴇᴀᴅʏ ᴠᴇʀɪғɪᴇᴅ!\n\n"
-                                f"⏰ Tɪᴍᴇ ʟᴇғᴛ: {hours_left}ʜ {minutes_left}ᴍ",
-                                reply_markup=InlineKeyboardMarkup([[
-                                    InlineKeyboardButton("•Sᴇᴇ ᴘʟᴀɴs •", callback_data="seeplan")
-                                ]])
-                            )
-                            return
-                    except Exception as e:
-                        logger.error(f"Error checking verified_time_2: {e}")
-                        
-            except Exception as e:
-                logger.error(f"Error checking verification status: {e}")
-                # Continue to generate new verification link if there's an error
-    
-    except Exception as e:
-        logger.error(f"Error in is_user_verified check: {e}")
-    
-    # User not verified - generate and send verification link
+    verified_time_1 = verification.get("verified_time_1")
+    verified_time_2 = verification.get("verified_time_2")
+    shortener_2_at = verification.get("shortener_2_available_at")
+
+    current_time = datetime.utcnow()
+    messages = []
+
+    # ── 3️⃣ Verify 1 status ─────────────────────────────────
+    if isinstance(verified_time_1, datetime):
+        if current_time < verified_time_1 + timedelta(hours=24):
+            left = (verified_time_1 + timedelta(hours=24)) - current_time
+            h, m = divmod(int(left.total_seconds()) // 60, 60)
+            messages.append(f"✅ <b>Vᴇʀɪꜰʏ 𝟷</b>: {h}ʜ {m}ᴍ ʟᴇғᴛ")
+        else:
+            messages.append("❌ <b>Vᴇʀɪꜰʏ 𝟷</b>: ᴇxᴘɪʀᴇᴅ")
+
+    # ── 4️⃣ Verify 2 status (gap aware) ─────────────────────
+    if isinstance(verified_time_2, datetime):
+        if current_time < verified_time_2 + timedelta(hours=24):
+            left = (verified_time_2 + timedelta(hours=24)) - current_time
+            h, m = divmod(int(left.total_seconds()) // 60, 60)
+            messages.append(f"✅ <b>Vᴇʀɪꜰʏ 𝟸</b>: {h}ʜ {m}ᴍ ʟᴇғᴛ")
+        else:
+            messages.append("❌ <b>Vᴇʀɪꜰʏ 𝟸</b>: ᴇxᴘɪʀᴇᴅ")
+
+    elif isinstance(shortener_2_at, datetime):
+        if current_time < shortener_2_at:
+            gap_left = shortener_2_at - current_time
+            h, m = divmod(int(gap_left.total_seconds()) // 60, 60)
+            messages.append(f"⏳ <b>Vᴇʀɪꜰʏ 𝟸</b> ᴀᴠᴀɪʟᴀʙʟᴇ ɪɴ: {h}ʜ {m}ᴍ")
+        else:
+            messages.append("⚠️ <b>Vᴇʀɪꜰʏ 𝟸</b>: ᴘᴇɴᴅɪɴɢ (ᴜsᴇ /verify)")
+
+    # ── 5️⃣ If any verification info exists → show status ───
+    if messages:
+        await message.reply_text(
+            "🔐 <b>Yᴏᴜʀ Vᴇʀɪꜰɪᴄᴀᴛɪᴏɴ Sᴛᴀᴛᴜs</b>\n\n" + "\n".join(messages),
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("• Sᴇᴇ ᴘʟᴀɴs •", callback_data="seeplan")
+            ]])
+        )
+        return
+
+    # ── 6️⃣ Not verified → generate verification link ───────
     try:
         await send_verification_message(client, message)
     except Exception as e:
         logger.error(f"Error sending verification message: {e}")
         await message.reply_text(
-            f"<b><i>! Eʀʀᴏʀ, Cᴏɴᴛᴀᴄᴛ ᴅᴇᴠᴇʟᴏᴘᴇʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜᴇ ɪssᴜᴇs @seishiro_obito</i></b>\n"
+            "<b><i>! Eʀʀᴏʀ, Cᴏɴᴛᴀᴄᴛ Dᴇᴠᴇʟᴏᴘᴇʀ</i></b>\n"
             f"<blockquote expandable><b>Rᴇᴀsᴏɴ:</b> {str(e)}</blockquote>"
         )
-
-
 
 # ----------------------------------------
 # 𝐌𝐀𝐃𝐄 𝐁𝐘 𝐀𝐁𝐇𝐈

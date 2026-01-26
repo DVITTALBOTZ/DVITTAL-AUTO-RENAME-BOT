@@ -230,6 +230,7 @@ async def cb_handler(client, query: CallbackQuery):
             verify_status_1 = settings.get("verify_status_1", False)
             verify_token_1 = settings.get("verify_token_1", "Not set")
             api_link_1 = settings.get("api_link_1", "Not set")
+            verify_tutorial_1 = settings.get("verify_tutorial_1", "Not set")
             current_status = "On" if verify_status_1 else "Off"
             
             buttons = [
@@ -240,16 +241,21 @@ async def cb_handler(client, query: CallbackQuery):
                 [
                     InlineKeyboardButton("Sᴇᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ", callback_data="vrfy_set_1")
                 ],
+                [
+                    InlineKeyboardButton("📘 Sᴇᴛ Tᴜᴛᴏʀɪᴀʟ", callback_data="vrfy_tutorial_set_1")
+                ],
                 [InlineKeyboardButton("Bᴀᴄᴋ", callback_data="verify_settings")]
             ]
             keyboard = InlineKeyboardMarkup(buttons)
-            await query.message.edit_text(f"<b>ᴠᴇʀɪꜰʏ 𝟷 ꜱᴇᴛᴛɪɴɢꜱ:\n\nꜱʜᴏʀᴛɴᴇʀ: {api_link_1}\nAPI: {verify_token_1}\n\nꜱᴛᴀᴛᴜꜱ:</b> {current_status}", reply_markup=keyboard)
+            await query.message.edit_text(f"<b>ᴠᴇʀɪꜰʏ 𝟷 ꜱᴇᴛᴛɪɴɢꜱ:\n\nꜱʜᴏʀᴛɴᴇʀ: {api_link_1}\nAPI: {verify_token_1}\nTutorial: {verify_tutorial_1}\n\nꜱᴛᴀᴛᴜꜱ:</b> {current_status}", reply_markup=keyboard)
 
         elif data == "verify_2_cbb":
             settings = await rexbots.get_verification_settings()
             verify_status_2 = settings.get("verify_status_2", False)
             verify_token_2 = settings.get("verify_token_2", "Not set")
             api_link_2 = settings.get("api_link_2", "Not set")
+            verify_tutorial_2 = settings.get("verify_tutorial_2", "Not set")
+            verify_gap_hours = settings.get("verify_gap_hours", 0)
             current_status = "On" if verify_status_2 else "Off"
 
             buttons = [
@@ -260,10 +266,65 @@ async def cb_handler(client, query: CallbackQuery):
                 [
                     InlineKeyboardButton("Sᴇᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ", callback_data="vrfy_set_2")
                 ],
+                [
+                    InlineKeyboardButton("⏱ Sᴇᴛ Vᴇʀɪꜰʏ Gᴀᴘ", callback_data="set_verify_gap")
+                ],
+                [
+                    InlineKeyboardButton("📘 Sᴇᴛ Tᴜᴛᴏʀɪᴀʟ", callback_data="vrfy_tutorial_set_2")
+                ],
                 [InlineKeyboardButton("Bᴀᴄᴋ", callback_data="verify_settings")]
             ]
             keyboard = InlineKeyboardMarkup(buttons)
-            await query.message.edit_text(f"<b>ᴠᴇʀɪꜰʏ 𝟸 ꜱᴇᴛᴛɪɴɢꜱ:\n\nꜱʜᴏʀᴛɴᴇʀ: {api_link_2}\nAPI: {verify_token_2}\n\nꜱᴛᴀᴛᴜꜱ:</b> {current_status}", reply_markup=keyboard)
+            await query.message.edit_text(f"<b>ᴠᴇʀɪꜰʏ 𝟸 ꜱᴇᴛᴛɪɴɢꜱ:\n\nꜱʜᴏʀᴛɴᴇʀ: {api_link_2}\nAPI: {verify_token_2}\nTutorial: {verify_tutorial_2}\nGᴀᴘ: {verify_gap_hours} hours\nꜱᴛᴀᴛᴜꜱ:</b> {current_status}", reply_markup=keyboard)
+
+        elif data == "vrfy_tutorial_set_1":
+            msg = await query.message.edit_text(f"<b>📘 Sᴇɴᴅ Tᴜᴛᴏʀɪᴀʟ Lɪɴᴋ ғᴏʀ Vᴇʀɪꜰʏ 𝟷\n\nExᴀᴍᴘʟᴇ:\nhttps://t.me/your_tutorial\n\n/cancel ᴛᴏ ᴄᴀɴᴄᴇʟ</b>")
+            try:
+                tutorial_msg = await client.listen(
+                    chat_id=query.message.chat.id,
+                    filters=filters.text,
+                    timeout=300
+                )
+                await msg.delete()
+                tutorial_link = tutorial_msg.text.strip()
+                await rexbots.update_verification_settings(verify_tutorial_1=tutorial_link)
+                await query.message.reply_text("<b>✅ Verify 1 tutorial link updated successfully!</b>", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅ Bᴀᴄᴋ", callback_data="verify_1_cbb")]]))
+            except asyncio.TimeoutError:
+                await query.message.reply_text("⏰ Tɪᴍᴇᴏᴜᴛ. Tʀʏ ᴀɢᴀɪɴ.")
+
+        elif data == "vrfy_tutorial_set_2":
+            msg = await query.message.edit_text(f"<b>📘 Sᴇɴᴅ Tᴜᴛᴏʀɪᴀʟ Lɪɴᴋ ғᴏʀ Vᴇʀɪꜰʏ 2\n\nExᴀᴍᴘʟᴇ:\nhttps://t.me/your_tutorial\n\n/cancel ᴛᴏ ᴄᴀɴᴄᴇʟ</b>")
+            try:
+                tutorial_msg = await client.listen(
+                    chat_id=query.message.chat.id,
+                    filters=filters.text,
+                    timeout=300
+                )
+                await msg.delete()
+                tutorial_link = tutorial_msg.text.strip()
+                await rexbots.update_verification_settings(verify_tutorial_2=tutorial_link)
+                await query.message.reply_text("<b>✅ Verify 2 tutorial link updated successfully!</b>", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅ Bᴀᴄᴋ", callback_data="verify_2_cbb")]]))
+            except asyncio.TimeoutError:
+                await query.message.reply_text("⏰ Tɪᴍᴇᴏᴜᴛ. Tʀʏ ᴀɢᴀɪɴ.")
+
+        elif data == "set_verify_gap":
+            msg = await query.message.edit_text("<b>⏱ Sᴇɴᴅ Sʜᴏʀᴛɴᴇʀ-2 Gᴀᴘ ɪɴ Hᴏᴜʀs (0–24)\n\nExᴀᴍᴘʟᴇ:\n12\n\n/cancel ᴛᴏ ᴄᴀɴᴄᴇʟ</b>")
+            try:
+                gap_msg = await client.listen(
+                    chat_id=query.message.chat.id,
+                    filters=filters.text,
+                    timeout=300
+                )
+                await msg.delete()
+                gap_hours = int(gap_msg.text.strip())
+                if gap_hours < 0 or gap_hours > 24:
+                    return await query.message.reply_text("❌ Gᴀᴘ ᴍᴜsᴛ ʙᴇ ʙᴇᴛᴡᴇᴇɴ 0–24")
+                await rexbots.set_verify_gap_hours(gap_hours)
+                await query.message.reply_text(f"<b>✅ Vᴇʀɪꜰʏ Gᴀᴘ Sᴇᴛ Tᴏ {gap_hours} Hᴏᴜʀs</b>", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅ Bᴀᴄᴋ", callback_data="verify_settings")]]))
+            except asyncio.TimeoutError:
+                await query.message.reply_text("⏰ Tɪᴍᴇᴏᴜᴛ. Tʀʏ Aɢᴀɪɴ.")
+            except ValueError:
+                await query.message.reply_text("❌ Pʟᴇᴀsᴇ sᴇɴᴅ ᴀ vᴀʟɪᴅ ɴᴜᴍʙᴇʀ.")
 
         elif data == "on_vrfy_1":
             try:
