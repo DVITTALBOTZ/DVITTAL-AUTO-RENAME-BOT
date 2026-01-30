@@ -1,8 +1,11 @@
+![Typing SVG](https://readme-typing-svg.herokuapp.com?lines=DVITTAL+Auto+Rename+bot!&center=true&size=30&color=FF9933,FFFFFF,138808,1E90FF,FF0000&vCenter=true)
+
+
 <div align="center">
   <img src="https://files.catbox.moe/b8stj4.jpg?transform=Banner+Webp" alt="Bot Banner" width="1920"/>
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-  <h1>Auto Rename Bot</h1>
+  <h1>DVITTAL Auto Rename Bot</h1>
   <p>
     <b>A powerful and dynamic Telegram bot designed to automatically rename files up to 2GB, with a fully interactive, button-based UI that can be configured dynamically by the owner.</b>
   </p>
