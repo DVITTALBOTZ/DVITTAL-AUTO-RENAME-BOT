@@ -22,14 +22,14 @@ class Config(object):
     DB_URL  = os.environ.get("DB_URL", "")
  
     # other configs
-    ADMIN_URL = "https://t.me/adityaabhinav"
+    ADMIN_URL = "https://t.me/DVITTALBOTZ"
     DUMP_CHANNEL = os.environ.get("DUMP_CHANNEL", "-1002257657458")
     DUMP = True
     BOT_UPTIME  = time.time()
     START_PIC   = os.environ.get("START_PIC", "https://files.catbox.moe/i9xwka.jpg")
     LEADERBOARD_PIC = os.environ.get("LEADERBOARD_PIC", "https://files.catbox.moe/e3rta0.jpg")
-    OWNER_ID = int(os.environ.get("OWNER_ID", "6701907262"))
-    SUPPORT_CHAT = int(os.environ.get("SUPPORT_CHAT", "-1002871570975"))
+    OWNER_ID = int(os.environ.get("OWNER_ID", "651624420"))
+    SUPPORT_CHAT = int(os.environ.get("SUPPORT_CHAT", "-1003845676561"))
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", ""))
     FSUB_PIC = os.environ.get("FSUB_PIC", "https://files.catbox.moe/df0cp9.jpg")
     BOT_USERNAME = os.environ.get("BOT_USERNAME", "")
