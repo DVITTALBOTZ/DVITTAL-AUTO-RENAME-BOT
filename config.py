@@ -23,7 +23,7 @@ class Config(object):
  
     # other configs
     ADMIN_URL = "https://t.me/DVITTALBOTZ"
-    DUMP_CHANNEL = os.environ.get("DUMP_CHANNEL", "-1002257657458")
+    DUMP_CHANNEL = os.environ.get("DUMP_CHANNEL", "")
     DUMP = True
     BOT_UPTIME  = time.time()
     START_PIC   = os.environ.get("START_PIC", "https://files.catbox.moe/i9xwka.jpg")
