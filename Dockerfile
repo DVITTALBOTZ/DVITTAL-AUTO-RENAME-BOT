@@ -1,10 +1,16 @@
 FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y ffmpeg
-
 WORKDIR /app
-COPY . .
+COPY . /app/
 
+# install system deps (gcc for TgCrypto + ffmpeg for rename/convert)
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libffi-dev \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 CMD ["python", "bot.py"]
