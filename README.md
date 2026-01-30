@@ -1,5 +1,7 @@
 <div align="center">
   <img src="https://files.catbox.moe/b8stj4.jpg?transform=Banner+Webp" alt="Bot Banner" width="1920"/>
+
+<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
   <h1>Auto Rename Bot</h1>
   <p>
     <b>A powerful and dynamic Telegram bot designed to automatically rename files up to 2GB, with a fully interactive, button-based UI that can be configured dynamically by the owner.</b>
@@ -8,9 +10,10 @@
   <p>
 <a href="https://t.me/DVITTAL_4GB_Rename_bot">
   <img src="https://img.shields.io/badge/DEMO BOTS-Telegram-orange?style=for-the-badge&logo=telegram" alt="Demo Bot">
-    
-  </p>
-</div>
+
+
+ 
+ 
 
 ---
 
