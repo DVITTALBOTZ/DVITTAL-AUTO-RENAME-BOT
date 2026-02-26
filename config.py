@@ -12,25 +12,25 @@ id_pattern = re.compile(r'^.\d+$')
 # --
 class Config(object):
     # pyro client config
-    API_ID    = os.environ.get("API_ID", "29388536")
-    API_HASH  = os.environ.get("API_HASH", "1795cfeb72fdd9741bbaab5e02c57668")
-    BOT_TOKEN = os.environ.get("BOT_TOKEN", "7837101926:AAEmLgyAZtji_UwWVCtoGSTRxAcYpnb5cHU")
+    API_ID    = os.environ.get("API_ID", "293886")
+    API_HASH  = os.environ.get("API_HASH", "1795cfeb72fdd9741bbb5e02c57668")
+    BOT_TOKEN = os.environ.get("BOT_TOKEN", "7837101926:AAEmyAZtji_UwWVCtoGSTRxAcYpnb5cHU")
     PORT = os.environ.get("PORT", "8980")
 
     # database config
     DB_NAME = os.environ.get("DB_NAME", "DVITTALBOTZ")     
-    DB_URL  = os.environ.get("DB_URL", "mongodb+srv://DB2:DB2@db2.3oa7m.mongodb.net/?retryWrites=true&w=majority&appName=DB2")
+    DB_URL  = os.environ.get("DB_URL", "mongodb+srv://DB2:D3oa7m.mongodb.net/?retryWrites=true&w=majority&appName=DB2")
  
     # other configs
     ADMIN_URL = "https://t.me/DVITTALBOTZ"
-    DUMP_CHANNEL = os.environ.get("DUMP_CHANNEL", "-1002542497980")
+    DUMP_CHANNEL = os.environ.get("DUMP_CHANNEL", "-100254297980")
     DUMP = True
     BOT_UPTIME  = time.time()
     START_PIC   = os.environ.get("START_PIC", "https://files.catbox.moe/i9xwka.jpg")
     LEADERBOARD_PIC = os.environ.get("LEADERBOARD_PIC", "https://files.catbox.moe/e3rta0.jpg")
     OWNER_ID = int(os.environ.get("OWNER_ID", "651624420"))
-    SUPPORT_CHAT = int(os.environ.get("SUPPORT_CHAT", "-1002542497980"))
-    LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-1002542497980"))
+    SUPPORT_CHAT = int(os.environ.get("SUPPORT_CHAT", "-100254297980"))
+    LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-100254497980"))
     FSUB_PIC = os.environ.get("FSUB_PIC", "https://files.catbox.moe/df0cp9.jpg")
     BOT_USERNAME = os.environ.get("BOT_USERNAME", "")
     LEADERBOARD_DELETE_TIMER = 30
